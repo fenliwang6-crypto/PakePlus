@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>生日快乐</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: #fffaf2;
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: pointer;
+  }
+
+  /* ============ 场景通用 ============ */
+  .scene {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 1.3s ease, visibility 1.3s;
+  }
+
+  /* --- 场景一：星空与蛋糕 --- */
+  #scene1 {
+    background: radial-gradient(ellipse at 50% 42%, #1c1a3d 0%, #0e0d20 45%, #06050d 100%);
+    opacity: 1;
+    visibility: visible;
+  }
+  #scene1.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  /* --- 场景二：清新温暖的生日氛围 --- */
+  #scene2 {
+    background: radial-gradient(circle at 50% 20%, #ffffff 0%, #fff6e5 40%, #ffe3cc 100%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition-delay: .35s;
+  }
+  #scene2.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  /* ============ 烟花画布 ============ */
+  #fireworks {
+    position: fixed;
+    inset: 0;
+    pointer-events: none; /* 保证不影响底层的点击事件 */
+    z-index: 99;
+  }
+
+  /* ============ 星空 ============ */
+  #stars {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: .12; }
+    50%      { opacity: .85; }
+  }
+
+  /* ============ 蛋糕 SVG ============ */
+  .cake-svg {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    display: block;
+  }
+  .cake-group {
+    opacity: 0;
+    animation: riseIn 1.7s cubic-bezier(.16, .84, .32, 1) .35s forwards;
+  }
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(90px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .halo {
+    opacity: 0;
+    animation: haloIn 2.4s ease 1s forwards;
+  }
+  @keyframes haloIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .flames {
+    opacity: 0;
+    animation: fadeIn .9s ease 1.25s forwards;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+  .flicker {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: flick .44s ease-in-out infinite alternate;
+  }
+  .flicker.f2 { animation-duration: .37s; animation-delay: .1s; }
+  .flicker.f3 { animation-duration: .53s; animation-delay: .2s; }
+  @keyframes flick {
+    from { transform: scale(1, 1)      translateX(0);   opacity: .9;  }
+    to   { transform: scale(.9, 1.1)   translateX(1px); opacity: 1;   }
+  }
+
+  .char {
+    font-size: 80px;
+    font-weight: 600;
+    fill: #ffe9c6;
+    text-anchor: middle;
+    opacity: 0;
+    filter: drop-shadow(0 0 22px rgba(255, 196, 120, .5));
+    animation: charIn 1s cubic-bezier(.2, .9, .3, 1) forwards;
+  }
+  @keyframes charIn {
+    from { opacity: 0; transform: translateY(26px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .sub {
+    font-size: 26px;
+    fill: rgba(255, 220, 175, .68);
+    text-anchor: middle;
+    letter-spacing: .5em;
+    opacity: 0;
+    animation: charIn 1.2s ease 1.5s forwards;
+  }
+  .tap-hint {
+    font-size: 15px;
+    fill: #fff;
+    text-anchor: middle;
+    letter-spacing: .32em;
+    opacity: 0;
+    animation: hintFade 2.8s ease-in-out 3.6s infinite;
+  }
+  @keyframes hintFade {
+    0%   { opacity: 0; }
+    15%  { opacity: .5; }
+    55%  { opacity: .16; }
+    85%  { opacity: .5; }
+    100% { opacity: 0; }
+  }
+
+  /* ============ 场景二内容区 ============ */
+  .wrap {
+    position: relative;
+    width: 88%;
+    max-width: 640px;
+    text-align: center;
+    padding: 0 10px;
+    z-index: 2;
+  }
+
+  .story .line {
+    font-size: clamp(17px, 4.6vw, 25px);
+    font-weight: 500;
+    line-height: 2.05;
+    letter-spacing: .06em;
+    color: #5c473a; 
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 1.15s ease, transform 1.15s cubic-bezier(.2, .8, .3, 1);
+  }
+  .story .line.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .extra {
+    margin-top: 52px;
+    min-height: 1.7em;
+    font-size: clamp(16px, 4.4vw, 23px);
+    font-weight: 600;
+    letter-spacing: .08em;
+    color: #d96a3a; 
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity .55s ease, transform .55s ease;
+    text-shadow: 0 2px 10px rgba(217, 106, 58, .15);
+  }
+  .extra.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* 针对“早日上岸”的加粗发光特效 */
+  .extra.highlight {
+    font-size: clamp(18px, 5vw, 26px);
+    color: #e65100;
+    text-shadow: 0 0 15px rgba(255, 152, 0, 0.6);
+  }
+
+  .hint2 {
+    margin-top: 42px;
+    font-size: 13px;
+    letter-spacing: .3em;
+    color: #8c7768;
+    opacity: 0;
+    transition: opacity .9s ease;
+  }
+  .hint2.in {
+    opacity: .5;
+    animation: pulse 2.6s ease-in-out 1.2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: .2; }
+    50%      { opacity: .6; }
+  }
+
+  /* 装饰气球 */
+  .balloons {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .balloon {
+    position: absolute;
+    border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+    opacity: 0.7;
+    animation: floatUp linear infinite;
+  }
+  .balloon::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 8px solid inherit;
+  }
+  .balloon::before {
+    content: '';
+    position: absolute;
+    bottom: -50px;
+    left: 50%;
+    width: 1px;
+    height: 50px;
+    background: rgba(150, 120, 100, 0.3);
+  }
+  .b1 { width: 45px; height: 55px; background: #f7b2b7; left: 10%; bottom: -10%; animation-duration: 18s; }
+  .b2 { width: 55px; height: 65px; background: #a7d3e8; right: 12%; bottom: -15%; animation-duration: 22s; animation-delay: 2s; }
+  .b3 { width: 35px; height: 45px; background: #fce299; left: 80%; bottom: -5%; animation-duration: 15s; animation-delay: 5s; }
+  .b4 { width: 40px; height: 50px; background: #cce2c8; left: 20%; bottom: -20%; animation-duration: 20s; animation-delay: 8s; }
+  .b5 { width: 50px; height: 60px; background: #e2c8df; right: 25%; bottom: -25%; animation-duration: 25s; animation-delay: 4s; }
+  @keyframes floatUp {
+    0% { transform: translateY(0) rotate(-5deg); opacity: 0; }
+    10% { opacity: 0.7; }
+    90% { opacity: 0.7; }
+    100% { transform: translateY(-120vh) rotate(10deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 烟花画布 -->
+<canvas id="fireworks"></canvas>
+
+<!-- ================= 场景一 ================= -->
+<div class="scene" id="scene1">
+  <svg id="stars" width="100%" height="100%"></svg>
+
+  <svg class="cake-svg" viewBox="0 0 800 900" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <radialGradient id="halo">
+        <stop offset="0%"   stop-color="#ffcf8a" stop-opacity=".55"/>
+        <stop offset="42%"  stop-color="#ffab5e" stop-opacity=".16"/>
+        <stop offset="100%" stop-color="#ffab5e" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="flameG" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%"   stop-color="#ff6f28"/>
+        <stop offset="52%"  stop-color="#ffc44d"/>
+        <stop offset="100%" stop-color="#fff6d2"/>
+      </linearGradient>
+      <linearGradient id="cakeBody" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"   stop-color="#f2d3a8"/>
+        <stop offset="100%" stop-color="#d79c64"/>
+      </linearGradient>
+      <linearGradient id="frosting" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"   stop-color="#fff8ec"/>
+        <stop offset="100%" stop-color="#f4dcba"/>
+      </linearGradient>
+    </defs>
+
+    <circle class="halo" cx="400" cy="478" r="230" fill="url(#halo)"/>
+    <g class="cake-group">
+      <ellipse cx="400" cy="720" rx="182" ry="21" fill="#05040a" opacity=".6"/>
+      <rect x="272" y="596" width="256" height="118" rx="14" fill="url(#cakeBody)"/>
+      <rect x="262" y="572" width="276" height="42" rx="19" fill="url(#frosting)"/>
+      <circle cx="300" cy="614" r="13" fill="url(#frosting)"/>
+      <circle cx="352" cy="619" r="8"  fill="url(#frosting)"/>
+      <circle cx="452" cy="617" r="10" fill="url(#frosting)"/>
+      <circle cx="506" cy="612" r="13" fill="url(#frosting)"/>
+      <circle cx="318" cy="654" r="4.5" fill="#e8737f" opacity=".9"/>
+      <circle cx="360" cy="672" r="3.5" fill="#7ec4cf" opacity=".9"/>
+      <circle cx="404" cy="646" r="4"   fill="#f2c14e" opacity=".9"/>
+      <circle cx="448" cy="676" r="3.5" fill="#e8737f" opacity=".9"/>
+      <circle cx="488" cy="650" r="4.5" fill="#7ec4cf" opacity=".9"/>
+      <rect x="329" y="492" width="14" height="84" rx="5" fill="#e85d5d"/>
+      <rect x="393" y="492" width="14" height="84" rx="5" fill="#f2c14e"/>
+      <rect x="457" y="492" width="14" height="84" rx="5" fill="#5fb8c9"/>
+      <g class="flames">
+        <g transform="translate(336 494)">
+          <g class="flicker f1">
+            <path d="M0 -36 C 8 -26, 12 -16, 8 -8 C 5 -2, -5 -2, -8 -8 C -12 -16, -8 -26, 0 -36 Z" fill="url(#flameG)"/>
+            <path d="M0 -22 C 4 -16, 5.5 -11, 4 -7 C 2.5 -3.5, -2.5 -3.5, -4 -7 C -5.5 -11, -4 -16, 0 -22 Z" fill="#fff8dc" opacity=".85"/>
+          </g>
+        </g>
+        <g transform="translate(400 494)">
+          <g class="flicker f2">
+            <path d="M0 -38 C 8.5 -27, 12.5 -16, 8.5 -8 C 5.5 -2, -5.5 -2, -8.5 -8 C -12.5 -16, -8.5 -27, 0 -38 Z" fill="url(#flameG)"/>
+            <path d="M0 -23 C 4 -17, 6 -11.5, 4.5 -7 C 3 -3.5, -3 -3.5, -4.5 -7 C -6 -11.5, -4 -17, 0 -23 Z" fill="#fff8dc" opacity=".85"/>
+          </g>
+        </g>
+        <g transform="translate(464 494)">
+          <g class="flicker f3">
+            <path d="M0 -36 C 8 -26, 12 -16, 8 -8 C 5 -2, -5 -2, -8 -8 C -12 -16, -8 -26, 0 -36 Z" fill="url(#flameG)"/>
+            <path d="M0 -22 C 4 -16, 5.5 -11, 4 -7 C 2.5 -3.5, -2.5 -3.5, -4 -7 C -5.5 -11, -4 -16, 0 -22 Z" fill="#fff8dc" opacity=".85"/>
+          </g>
+        </g>
+      </g>
+    </g>
+
+    <text class="sub" x="400" y="238">老 爸</text>
+    <text class="char" x="256" y="368">生</text>
+    <text class="char" x="352" y="368">日</text>
+    <text class="char" x="448" y="368">快</text>
+    <text class="char" x="544" y="368">乐</text>
+    <text class="tap-hint" x="400" y="840">轻 触 屏 幕 任 意 位 置</text>
+  </svg>
+</div>
+
+<!-- ================= 场景二 ================= -->
+<div class="scene" id="scene2">
+  <div class="balloons">
+    <div class="balloon b1"></div>
+    <div class="balloon b2"></div>
+    <div class="balloon b3"></div>
+    <div class="balloon b4"></div>
+    <div class="balloon b5"></div>
+  </div>
+
+  <div class="wrap">
+    <div class="story" id="story">
+      <p class="line">一锅汤，大火烧开了，就得转小火。</p>
+      <p class="line">火一直大，汤会浑，肉也柴。</p>
+      <p class="line">小火咕嘟着，四个钟头，催也没用。</p>
+      <p class="line">该烂的会烂，味道自己会出来。</p>
+      <p class="line">灶上不能离人。</p>
+      <p class="line">守着就行。</p>
+    </div>
+
+    <div class="extra" id="extra"></div>
+    <div class="hint2" id="hint2">轻 触 屏 幕 继 续</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- 生成星空 ---------- */
+  (function buildStars() {
+    var NS = 'http://www.w3.org/2000/svg';
+    var layer = document.getElementById('stars');
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < 120; i++) {
+      var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', (Math.random() * 100).toFixed(2) + '%');
+      c.setAttribute('cy', (Math.random() * 100).toFixed(2) + '%');
+      c.setAttribute('r', (Math.random() * 1.5 + 0.4).toFixed(2));
+      c.setAttribute('fill', '#ffffff');
+      c.style.animation = 'twinkle ' + (2.4 + Math.random() * 4).toFixed(2) + 's ease-in-out ' + (Math.random() * 6).toFixed(2) + 's infinite';
+      frag.appendChild(c);
+    }
+    layer.appendChild(frag);
+  })();
+
+  /* ---------- 逐字动画延时 ---------- */
+  (function staggerChars() {
+    var chars = document.querySelectorAll('.char');
+    chars.forEach(function (el, i) {
+      el.style.animationDelay = (1.9 + i * 0.26).toFixed(2) + 's';
+    });
+  })();
+
+  /* ---------- 元素引用 ---------- */
+  var scene1  = document.getElementById('scene1');
+  var scene2  = document.getElementById('scene2');
+  var story   = document.getElementById('story');
+  var lines   = story.querySelectorAll('.line');
+  var extra   = document.getElementById('extra');
+  var hint2   = document.getElementById('hint2');
+
+  /* ---------- 交互状态 ---------- */
+  var stage = 0;        // 0 = 开场, 1 = 过渡中, 2 = 可翻句
+  var extraIdx = 0;
+
+  /* ---------- 更新的短句内容 ---------- */
+  var extras = [
+    '爱，本是无声，我能感受。',
+    '太过功利会被反噬。',
+    '累了就歇着，没人催你。',
+    '这个世界不会是强者愈强，后来者总有机会!!!',
+    '早日上岸！'
+  ];
+
+  /* ==========================================
+     烟花特效核心逻辑 (Canvas)
+     ========================================== */
+  var canvas = document.getElementById('fireworks');
+  var ctx = canvas.getContext('2d');
+  var particles = [];
+  var animationFrameId;
+
+  // 适配屏幕尺寸
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  // 柔和绚丽的颜色数组
+  var colors = ['255,107,129', '255,193,7', '96,219,160', '100,181,246', '224,143,255', '255,171,64'];
+
+  // 生成单个粒子
+  function createParticle(x, y, colorStr) {
+    var angle = Math.random() * Math.PI * 2;
+    var speed = Math.random() * 8 + 2; // 爆炸散开的速度
+    return {
+      x: x,
+      y: y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1,
+      decay: Math.random() * 0.015 + 0.015, // 消失速度
+      color: colorStr,
+      size: Math.random() * 2.5 + 1.5
+    };
+  }
+
+  // 在某一点触发爆炸
+  function boom(x, y) {
+    var colorStr = colors[Math.floor(Math.random() * colors.length)];
+    var particleCount = 60; // 每次爆炸的粒子数
+    for (var i = 0; i < particleCount; i++) {
+      particles.push(createParticle(x, y, colorStr));
+    }
+    if (!animationFrameId) {
+      animateFireworks();
+    }
+  }
+
+  // 核心渲染循环
+  function animateFireworks() {
+    // 使用轻微拖影效果让粒子有轨迹感
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (var i = particles.length - 1; i >= 0; i--) {
+      var p = particles[i];
+      
+      // 物理运动
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.12; // 重力
+      p.vx *= 0.98; // 空气阻力
+      p.vy *= 0.98;
+      p.life -= p.decay;
+
+      // 死亡移除
+      if (p.life <= 0) {
+        particles.splice(i, 1);
+        continue;
+      }
+
+      // 绘制
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(' + p.color + ',' + p.life + ')';
+      ctx.fill();
+    }
+
+    // 循环继续
+    if (particles.length > 0) {
+      animationFrameId = requestAnimationFrame(animateFireworks);
+    } else {
+      animationFrameId = null;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  // 触发连环烟花
+  function launchFireworks() {
+    // 连续在不同位置绽放 5 次，营造满天烟花感
+    var positions = [
+      { x: window.innerWidth * 0.2, y: window.innerHeight * 0.3, delay: 0 },
+      { x: window.innerWidth * 0.8, y: window.innerHeight * 0.25, delay: 300 },
+      { x: window.innerWidth * 0.5, y: window.innerHeight * 0.15, delay: 600 },
+      { x: window.innerWidth * 0.3, y: window.innerHeight * 0.4, delay: 900 },
+      { x: window.innerWidth * 0.7, y: window.innerHeight * 0.35, delay: 1200 }
+    ];
+
+    positions.forEach(function (pos) {
+      setTimeout(function () {
+        boom(pos.x, pos.y);
+      }, pos.delay);
+    });
+  }
+  /* ========================================== */
+
+  /* ---------- 进入故事 ---------- */
+  function goStory() {
+    scene1.classList.add('hidden');
+    setTimeout(function () {
+      scene2.classList.add('show');
+      setTimeout(playStory, 1000);
+    }, 420);
+  }
+
+  /* ---------- 逐行播放故事 ---------- */
+  function playStory() {
+    lines.forEach(function (el, i) {
+      setTimeout(function () {
+        el.classList.add('in');
+      }, i * 700);
+    });
+
+    var total = lines.length * 700 + 500;
+    setTimeout(function () {
+      stage = 2;
+      hint2.classList.add('in');
+    }, total);
+  }
+
+  /* ---------- 显示附加短句 ---------- */
+  function showExtra() {
+    extra.classList.remove('in');
+    hint2.classList.remove('in');
+    extra.classList.remove('highlight'); // 重置高亮特效
+
+    setTimeout(function () {
+      var currentText = extras[extraIdx % extras.length];
+      extra.textContent = currentText;
+      
+      // 检测是否为最后一句“早日上岸”
+      if (currentText === '早日上岸！') {
+        extra.classList.add('highlight');
+        // 延迟一点点放烟花，等文字先出来
+        setTimeout(launchFireworks, 300);
+      }
+      
+      extraIdx++;
+      extra.classList.add('in');
+      
+      setTimeout(function () {
+        hint2.classList.add('in');
+      }, 900);
+    }, 480);
+  }
+
+  /* ---------- 点击总入口 ---------- */
+  document.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (stage === 0) {
+      stage = 1;
+      goStory();
+    } else if (stage === 2) {
+      showExtra();
+    }
+  }, { passive: false });
+
+  /* 键盘推进 */
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      if (stage === 0) { stage = 1; goStory(); }
+      else if (stage === 2) { showExtra(); }
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
